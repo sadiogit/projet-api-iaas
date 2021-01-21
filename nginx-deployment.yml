@@ -1,0 +1,58 @@
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: api-iaas
+spec:
+  revisionHistoryLimit: 2
+  template:
+    metadata:
+      labels:
+        app: api-iaas_nginx
+    spec:
+      initContainers:
+        - name: api-iaas_nginx
+          image: api-iaas_nginx
+          volumeMounts:
+            - mountPath: /volume
+              name: api-iaas
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - "cp -r /var/www/html /volume/html"
+      containers:
+      - name: fpm
+        image: php:7.2-fpm
+        volumeMounts:
+          - mountPath: /var/www
+            name: api-iaas
+        command:
+          - /bin/sh
+          - -c
+        args:
+          - "chown -R www-data:www-data /var/www/html/var && php-fpm"
+      - name: nginx
+        image: nginx:latest
+        volumeMounts:
+          - mountPath: /etc/nginx/conf.d
+            name: api-iaas_nginx
+          - mountPath: /var/www
+            name: api-iaas_nginx
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          timeoutSeconds: 1
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          timeoutSeconds: 1
+      volumes:
+        - name: api-iaas
+          emptyDir: {}
+        - name: api-iaas_nginx
+          configMap:
+            name: api-iaas_nginx
+      imagePullSecrets:
+      - name: regcred

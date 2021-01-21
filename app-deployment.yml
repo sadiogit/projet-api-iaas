@@ -1,0 +1,63 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: api-iaas
+spec:
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: api-iaas
+  template:
+    metadata:
+       labels:
+          app: api-iaas
+    spec:
+      containers:
+        - name: api-iaas
+          image: api-iaas
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            timeoutSeconds: 1
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            timeoutSeconds: 1
+      imagePullSecrets:
+        - name: regcred
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: api-iaas
+spec:
+  ports:
+  -
+    name: http
+    port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: api-iaas
+---
+kind: Ingress
+apiVersion: extensions/v1beta1
+metadata:
+  name: api-iaas
+  annotations:
+      certmanager.k8s.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+  - hosts:
+    - symfony-demo-dev.k8s.bastianhofmann.de
+    secretName: symfony-demo-secret
+  rules:
+  - host: symfony-demo-dev.k8s.bastianhofmann.de
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: symfony-demo
+          servicePort: 80
